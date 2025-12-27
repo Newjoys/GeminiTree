@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Bartender Pro</title>
+    <!-- 引入 Vue 3 & GSAP -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Tailwind CSS (样式引擎) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入字体: Playfair Display (标题) & Inter (正文) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 1. 设计系统 & 变量 --- */
+        :root {
+            --bg-deep: #1a1816; /* 深棕色基底 */
+            --bg-gradient: radial-gradient(circle at 50% 30%, #2c2824 0%, #1a1816 80%, #0d0c0b 100%);
+            
+            --gold-accent: #D4C5A8; /* 暖金色高光 */
+            --gold-dim: rgba(212, 197, 168, 0.4);
+            
+            --glass-card: rgba(30, 30, 30, 0.4);
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(212, 197, 168, 0.12);
+            
+            --font-serif: 'Playfair Display', serif;
+            --font-sans: 'Inter', sans-serif;
+
+            --text-main: #EAE6df;
+            --text-muted: rgba(234, 230, 223, 0.5);
+          
+            --accent-gold: #D4C5A8;
+
+            /* 新增：液体颜色变量 */
+            --liquidStart: #E8A348;
+            --liquidEnd: #D67C65;
+            /* 新增：橙色渐变变量（替代Tailwind的bg-orange-500/20） */
+            --orange-light: rgba(249, 115, 22, 0.2);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-deep);
+            color: var(--gold-accent);
+            font-family: var(--font-sans);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- 2. 全局噪点滤镜 (Grain Effect) --- */
+        .grain-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.07;
+            filter: url(#noiseFilter);
+        }
+
+        /* --- 3. 容器与布局 --- */
+        .app-frame {
+            position: relative;
+            z-index: 1;
+            width: 375px;
+            height: 812px;
+            background: var(--bg-gradient);
+            border-radius: 40px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .view-section {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 32px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .view-section.active {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        /* 顶部导航区 */
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+        .nav-icon { cursor: pointer; opacity: 0.7; transition: 0.3s; }
+        .nav-icon:hover { opacity: 1; transform: scale(1.1); }
+
+        /* --- 4. 字体排印 --- */
+        h1, h2, h3 {
+            font-family: var(--font-serif);
+            font-weight: 400;
+        }
+        .title-main {
+            /* font-size: 36px;
+            line-height: 1.2;
+            margin-bottom: 10px;
+            color: #fff;
+            letter-spacing: 0.02em; */
+            font-family: var(--font-serif); font-size: 36px; line-height: 1.2;
+            margin-bottom: 5px; color: var(--accent-gold); text-align: center;
+        }
+        .subtitle {
+            font-family: var(--font-sans);
+            font-size: 14px;
+            color: var(--gold-dim);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            text-align: center;
+            margin-top: 5px;
+            
+        }
+
+        /* --- 5. 首页组件 --- */
+        /* textarea.mood-input {
+            width: 100%;
+            height: 120px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: var(--font-serif);
+            font-size: 20px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            margin-top: 20px;
+        }
+        textarea.mood-input::placeholder { color: rgba(255,255,255,0.2); font-style: italic; } */
+
+        textarea.mood-input {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            margin-top: 10px;
+            margin-bottom: 10px;
+
+            width: 100%; height: 100px; 
+            color: var(--text-main); font-size: 16px; line-height: 1.5; outline: none; resize: none;
+            font-family: var(--font-serif);
+        }
+        textarea.mood-input::placeholder { color: var(--text-muted); font-style: italic; }
+
+        .tags-container {
+            /* display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 30px; */
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px;
+        }
+        .tag {
+            /* padding: 8px 16px;
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            font-size: 12px;
+            color: var(--gold-accent);
+            cursor: pointer;
+            transition: all 0.4s ease;
+            background: rgba(255,255,255,0.01); */
+            padding: 8px 16px; border-radius: 20px; border: 1px solid var(--glass-border);
+            font-size: 12px; color: var(--text-muted); transition: 0.3s; cursor: pointer;
+        }
+        .tag.selected {
+            background: var(--gold-accent);
+            color: #1a1816;
+            border-color: var(--gold-accent);
+        }
+
+        .action-area {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 按钮风格：极简、呼吸感 */
+        /* .btn-primary {
+            width: 100%;
+            padding: 22px;
+            background: rgba(212, 197, 168, 0.1);
+            color: #fff;
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            backdrop-filter: blur(10px);
+        }
+        .btn-primary:hover {
+            background: rgba(212, 197, 168, 0.2);
+            border-color: rgba(212, 197, 168, 0.4);
+        }
+        .btn-mystery {
+            text-align: center;
+            font-size: 12px;
+            color: var(--gold-dim);
+            cursor: pointer;
+            letter-spacing: 0.05em;
+        } */
+
+         /* 底部按钮组 */
+        .btn-group { margin-top: auto; display: flex; gap: 15px; }
+        .btn-primary {
+            flex: 2; height: 56px; border-radius: 28px; border: none;
+            background: var(--text-main); color: #000;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-icon {
+            flex: 1; height: 56px; border-radius: 28px; border: 1px solid var(--glass-border);
+            background: transparent; color: var(--text-main); cursor: pointer;
+            display: grid; place-items: center; font-size: 20px;
+        }
+        .btn-icon2 {
+            flex: 2; height: 56px; border-radius: 28px; border: 1px solid var(--glass-border);
+            background: transparent; color: var(--text-main); cursor: pointer;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+
+         /* ===================超美动态液面====================== */
+
+        /* 呼吸光晕动画 */
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.1); opacity: 0.5; }
+        }
+        .animate-breathe {
+            animation: breathe 6s ease-in-out infinite;
+        }
+
+        /* 液体上升动画 */
+        @keyframes liquid-rise {
+            0% { transform: translateY(100%); }
+            100% { transform: translateY(0); } /* 这里的0是相对父容器定位的位置 */
+        }
+        .liquid-enter {
+            animation: liquid-rise 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* 液面微波粼粼 */
+        @keyframes surface-shimmer {
+            0%, 100% { transform: translateY(-2px); }
+            50% { transform: translateY(2px); }
+        }
+        .liquid-surface {
+            animation: surface-shimmer 4s ease-in-out infinite;
+        }
+
+        /* 气泡上升 */
+        @keyframes bubble-up {
+            0% { bottom: -10px; opacity: 0; transform: translateX(0); }
+            50% { opacity: 0.8; }
+            100% { bottom: 80%; opacity: 0; transform: translateX(10px); }
+        }
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            animation: bubble-up 3s linear infinite;
+        }
+
+        /* 浓度条加载 */
+        @keyframes width-grow {
+            from { width: 0; }
+            to { width: 59%; }
+        }
+        .progress-bar {
+            animation: width-grow 1.5s ease-out 0.5s forwards;
+            width: 0; /* 初始状态 */
+        }
+
+        /* 新增：结果卡片淡入动画 */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            opacity: 0;
+            transform: translateY(16px);
+            animation: fadeInUp 0.8s ease-out 0.3s forwards;
+        }
+
+        /* 新增：页面淡出动画（再调一杯） */
+        .page-fade-out {
+            opacity: 0 !important;
+            transition: opacity 0.5s ease !important;
+        }
+        /* ========================================= */
+
+        /* --- 6. 调制过程（流体） --- */
+        .mixing-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        /* 模拟液体 Blob */
+        .fluid-blob {
+            width: 200px;
+            height: 200px;
+            background: var(--gold-accent); /* 默认色 */
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: morph 6s linear infinite;
+            filter: blur(15px);
+            opacity: 0.8;
+            transition: background 2s ease;
+            position: relative;
+        }
+        /* 内部气泡 */
+        /* .bubble {
+            position: absolute;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+            animation: rise 4s infinite ease-in;
+        } */
+
+        @keyframes morph {
+            0%, 100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); }
+            34% { border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%; }
+            67% { border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%; }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes rise {
+            0% { transform: translateY(0) scale(1); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-100px) scale(0.5); opacity: 0; }
+        }
+
+        .poetic-ingredient {
+            margin-top: 40px;
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 18px;
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            min-height: 30px;
+        }
+
+        /* --- 7. 结果页 (重霜玻璃) --- */
+        .result-glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 30px;
+            padding: 20px 20px;
+            text-align: center;
+            margin-top: 10px;
+            /* box-shadow: 0 20px 40px rgba(0,0,0,0.4); */
+            position: relative;
+            min-height: 400px; /* 增加最小高度 */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        /* 结果页背景模糊折射 */
+        .bg-refraction {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            filter: blur(4px); /* 厚玻璃感 */
+            transition: background 2s ease, opacity 0.4s ease;
+            opacity: 0.4; /* 新增：整体降低折射层的不透明度，0.8比1更淡 */
+            pointer-events: none;
+        }
+
+        .drink-name { font-size: 28px; margin-bottom: 8px; color: #fff; }
+        .drink-en { font-family: var(--font-sans); font-size: 12px; color: var(--gold-dim); margin-bottom: 20px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+        .formula-list { text-align: left; margin-top: 20px; }
+        .formula-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 8px;
+        }
+        .f-key { color: var(--gold-dim); }
+        .f-val { color: #ddd; font-weight: 500; }
+
+        /* --- 8. 酒单收藏页 --- */
+        .history-list {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 5px;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: 0.2s;
+        }
+        .history-item:hover { background: rgba(255,255,255,0.02); }
+        .h-info h4 { font-size: 16px; color: #fff; margin-bottom: 4px; }
+        .h-date { font-size: 11px; color: var(--gold-dim); }
+        .h-emoji { font-size: 24px; }
+
+        /* 滚动条隐藏 */
+        ::-webkit-scrollbar { width: 0px; }
+
+    </style>
+</head>
+<body>
+
+<!-- SVG 噪点滤镜定义 -->
+<svg style="display: none;">
+    <filter id="noiseFilter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+        <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.5 0"/>
+    </filter>
+</svg>
+
+<!-- 背景噪点层 -->
+<div class="grain-overlay"></div>
+
+<div id="app" class="app-frame">
+    
+    <!-- 1. 首页: 情绪感知 -->
+    <div class="view-section" :class="{ active: currentView === 'home' }">
+        <div class="nav-bar">
+            <span class="subtitle">Mood Bartender</span>
+            <div style="display: flex; gap: 10px;">
+                <span class="nav-icon" @click="goToHistory">📜 </span>
+                <span class="nav-icon" @click="goToCollection">❤️</span>
+            </div>
+        </div>
+        
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <h1 class="title-main">How is your soul<br>breathing today?</h1>
+            <div class="subtitle">Tell us your story</div>
+
+            <textarea 
+                class="mood-input" 
+                placeholder="Input your mood..." 
+                v-model="inputText"
+            ></textarea>
+
+            <!-- 新增：情绪标签区域（位置：textarea 下方，tags-container 上方） -->
+            <div class="tags-container" style="margin-top: 20px;">
+                <div 
+                class="tag" 
+                v-for="mood in moodOptions" 
+                :key="mood"
+                @click="selectMoodTag(mood)"
+                >
+                {{ mood }}
+                </div>
+            </div>
+
+            <!-- 味觉标签 -->
+            <div class="tags-container">
+                <div 
+                    class="tag" 
+                    v-for="flavor in flavorOptions" 
+                    :key="flavor"
+                    :class="{ selected: selectedFlavors.includes(flavor) }"
+                    @click="toggleFlavor(flavor)"
+                >
+                    {{ flavor }}
+                </div>
+            </div>
+        </div>
+
+        <!-- <div class="action-area">
+            <button class="btn-primary" @click="startMixing(null)">
+                Start Mixing
+            </button>
+            <div class="btn-mystery" @click="startBlindBox">
+                🎁 赠送盲盒 (Mystery Gift)
+            </div>
+        </div> -->
+        <div class="btn-group">
+            <button class="btn-icon" @click="startBlindBox">
+                🎁 <!-- 盲盒 -->
+            </button>
+            <button class="btn-primary" @click="startMixing(null)" style="position:relative;margin-bottom: 20px;">
+                <span>Start Mixing</span> <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 调制页: 诗意可视化 -->
+    <div class="view-section" :class="{ active: currentView === 'mixing' }">
+        <div class="mixing-container">
+            <!-- 动态流体 -->
+            <div class="fluid-blob" ref="fluidBlob">
+                <!-- 动态生成的 JS 气泡 -->
+            </div>
+            
+            <!-- 诗意成分提示 (非直接情绪) -->
+            <div class="poetic-ingredient">{{ currentIngredientText }}</div>
+        </div>
+    </div>
+
+    <!-- 3. 结果页: 艺术展示 -->
+    <div class="view-section" :class="{ active: currentView === 'result' }">
+        <!-- 背景折射层 (根据酒的颜色) -->
+        <div class="bg-refraction" :style="{ background: resultBg }"></div>
+        
+        <div class="nav-bar" style="position:relative; z-index:2;">
+            <span class="nav-icon" @click="reset">← Back</span>
+            <!-- <span class="nav-icon" @click="goToCollection">❤收藏</span> -->
+            <span class="nav-icon" @click="toggleMute" ">
+                <i class="fas" :class="isMuted ? 'fa-volume-mute' : 'fa-volume-up'" transform: scale(1.1);></i>
+            </span>
+        </div>
+        <!-- 核心视觉：酒杯 - 缩小一半 -->
+        <div class="relative" style="margin: 0 auto;margin-bottom: 16px;">
+            <!-- 背景呼吸光晕 - 同步缩小 -->
+            <div style="position: absolute; width: 100%; height: 100%; background: var(--orange-light); filter: blur(30px); border-radius: 50%;" class="animate-breathe"></div>
+            
+            <!-- 杯体结构 - 缩小一半 -->
+            <div style="position: relative; width: 80px; height: 100px; border-bottom-left-radius: 6rem; border-bottom-right-radius: 6rem; border-top-left-radius: 2px; border-top-right-radius: 2px; overflow: hidden; backdrop-filter: blur(2px); border-left: 1px solid rgba(255,255,255,0.2); border-right: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.2); box-shadow: 0 0 10px rgba(0,0,0,0.2); box-sizing: border-box; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);">
+                
+                <!-- 液体容器 - 高度比例保持50% -->
+                <div class="liquid-enter" style="position: absolute; bottom: 0; width: 100%; height: 60%; overflow: hidden;">
+                    <!-- 液体渐变 - 尺寸同步缩小 -->
+                    <div style="width: 100%; height: 100%; background: linear-gradient(to top, var(--liquidStart), var(--liquidEnd), rgba(232,163,72,0.1)); opacity: 0.9; filter: blur(0.5px);" class="liquid-surface"></div>
+                    
+                    <!-- 液体顶部高光线 - 同步缩小 -->
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 1px; background: rgba(255,255,255,0.3); filter: blur(0.5px);" class="liquid-surface"></div>
+
+                    <!-- 气泡容器 - 尺寸同步缩小 -->
+                    <div id="drink-bubble-container" style="position: absolute; inset: 0; pointer-events: none;"></div>
+                </div>
+
+                <!-- 玻璃反光层 - 尺寸同步缩小 -->
+                <div style="position: absolute; inset: 0; background: linear-gradient(to top right, transparent, transparent, rgba(255,255,255,0.1)); pointer-events: none;"></div>
+            </div>
+        </div>
+
+        <!-- 修改：给卡片添加淡入动画类 animate-fade-in-up -->
+        <div class="result-glass-card animate-fade-in-up" v-if="result" style="margin-top: 5px; margin-bottom: 20px;">
+            <!-- 视觉容器 -->
+
+            <h2 class="drink-name">{{ result.nameCN }}</h2>
+            <div class="drink-en">{{ result.nameEN }}</div>
+
+            <div style="font-size: 45px; margin-bottom: 0px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));">
+                {{ result.visualEmoji }}
+            </div>
+
+            <div class="formula-list">
+                <div class="formula-item">
+                    <span class="f-key">基酒 Base</span>
+                    <span class="f-val">{{ result.base }}</span>
+                </div>
+                <div class="formula-item">
+                    <span class="f-key">情绪 Mood Ingredients</span>
+                    <span class="f-val">{{ result.moodIngredients }}</span>
+                </div>
+                <div class="formula-item">
+                    <span class="f-key">风味 Palate</span>
+                    <span class="f-val">{{ result.palate }} {{ flavorTagsString }}</span>
+                </div>
+                <div class="formula-item" style="border:none; margin-top:10px; display:block;">
+                    <span class="f-key" style="font-size:11px; display:block; margin-bottom:4px;">Bartender's Note</span>
+                    <span class="f-val" style="font-size:14px; font-weight:300; font-style:italic; line-height:1.4;margin-top:10px;">
+                        "{{ result.note }}"
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group" style="position:relative; z-index:2; margin-bottom: 20px;">
+            <button class="btn-primary" @click="reset">
+                <i class="fas fa-sync-alt"></i><span>再调一杯</span>
+            </button>
+            <button class="btn-icon2" @click="saveDrink">
+                <i class="fas" :class="saved ? 'fa-check' : 'fa-bookmark'"></i><span>收藏酒单</span>
+            </button>
+        </div>
+        <!-- <div class="btn-group">
+            <button class="btn-icon" @click="startBlindBox">
+                🎁
+            </button>
+            <button class="btn-primary" @click="startMixing(null)">
+                <span>Start Mixing 调制</span> <i class="fas fa-arrow-right"></i>
+            </button>
+        </div> -->
+    </div>
+
+    <!-- 4. 历史页: 酒单历史页 -->
+    <div class="view-section" :class="{ active: currentView === 'history' }">
+        <div class="nav-bar">
+            <div style="display: flex; gap: 10px;">
+                <span class="nav-icon" @click="currentView = 'home'" >
+                    <i class="fa-solid fa-house"></i>
+                </span>
+                <span class="nav-icon" @click="goToCollection" >❤️</span>
+            </div>
+            <span class="subtitle">History ({{ historyRecords.length }})</span>
+            
+        </div>
+
+        <div class="history-list">
+            <div class="history-item" v-for="(item, index) in historyRecords" :key="index">
+                <div class="h-info">
+                    <h4>{{ item.nameCN }}</h4>
+                    <span class="h-date">{{ item.dateStr }} · {{ item.timeStr }}</span>
+                </div>
+                <div class="h-emoji">{{ item.visualEmoji }}</div>
+            </div>
+            <div v-if="historyRecords.length === 0" style="text-align:center; margin-top:100px; color:rgba(255,255,255,0.2);">
+                暂无历史记录<br>No records yet.
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 收藏夹页: 主动收藏的酒款 -->
+    <div class="view-section" :class="{ active: currentView === 'collection' }">
+        <div class="nav-bar">
+            <div style="display: flex; gap: 10px;">
+                <span class="nav-icon" @click="currentView = 'home'" >
+                    <i class="fa-solid fa-house"></i>
+                </span>
+                <span class="nav-icon" @click="currentView = 'history'" >📜</span>
+            </div>
+            
+            <!-- 显示“收藏数/总配方数” -->
+            <span class="subtitle">My Collection ({{ collections.length }}/{{ totalRecipes }})</span>
+        </div>
+
+        <div class="history-list">
+            <div class="history-item" v-for="(item, index) in collections" :key="index">
+                <div class="h-info">
+                    <h4>{{ item.nameCN }}</h4>
+                    <span class="h-date">收藏于 {{ item.collectTime }}</span>
+                </div>
+                <div class="h-emoji">{{ item.visualEmoji }}</div>
+            </div>
+            <div v-if="collections.length === 0" style="text-align:center; margin-top:100px; color:rgba(255,255,255,0.2);">
+                暂无收藏酒款<br>No collected drinks yet.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const { createApp, ref, computed, watch } = Vue;
+
+    createApp({
+        setup() {
+            // --- 状态管理 ---
+            const currentView = ref('home');
+            const inputText = ref('');
+            const selectedFlavors = ref([]);
+            const flavorOptions = ['🍋 Sour', '🍬 Sweet', '🌿 Bitter', '🌶 Spicy', '🧂 Salty'];
+            const moodOptions = ['✨ 开心', '⚡️内疚', '🌧️ 想要独处', '🔥 压力山大', '💫 灵感迸发'];
+            
+            const saved = ref(false);
+
+            const bubbleContainer = ref(null); // 新增：气泡容器ref
+            const fluidBlob = ref(null);
+            const currentIngredientText = ref('');
+            const result = ref(null);
+            const resultBg = ref('');
+            
+            // 新增：音频相关状态
+            const audio = ref(null); // 音频对象
+            const isMuted = ref(false); // 是否静音
+            const currentAudioUrl = ref(''); // 当前播放的音频URL
+            // 历史记录 (实际开发可存 LocalStorage)
+            // const history = ref([]);
+
+            // 1. 新增：收藏夹（主动保存的酒款，可去重）
+            const collections = ref([]);
+            // 2. 替换：历史记录（自动记录每次调制，含时间，不可删除）
+            const historyRecords = ref([]);
+            
+
+            // --- 9种情绪配方库 ---
+            const recipes = {
+                love: {
+                    keys: ['爱', 'love', '喜欢', '心动', '温暖', 'sweet'],
+                    nameCN: '粉红天鹅绒 · 拥抱 ❤️', nameEN: 'Pink Velvet Embrace',
+                    base: 'Gin 桃红金酒', moodIngredients: '蜜桃果泥 · 玫瑰花露',
+                    palate: '绵密 / 香甜', note: '爱是软肋，也是铠甲。',
+                    visualEmoji: '🍷', color: '#ff9a9e',
+                    ingredients: ['加入 🌸 晨间玫瑰', '调入 🍯 一勺温柔的蜜', '融合 ❤️ 心跳的节奏'],
+                    audio: './audio/love.mp3' // 相对路径：根目录→audio文件夹→love.mp3
+                },
+                jealousy: {
+                    keys: ['嫉妒', 'jealous', '吃醋', '酸', '羡慕', '恨'],
+                    nameCN: '翠绿之眼 · 荆棘 🐍', nameEN: 'Green Eyed Thorn',
+                    base: 'Absinthe 苦艾酒', moodIngredients: '青柠汁 · 苦瓜液',
+                    palate: '酸涩 / 强劲', note: '嫉妒是心中长出的野草，既苦涩又顽强。',
+                    visualEmoji: '🍸', color: '#00b09b',
+                    ingredients: ['挤入 🍋 酸涩的青柠', '研磨 🌿 带刺的荆棘', '滴入 💧 一滴不甘心'],
+                    audio: './audio/jealousy.mp3' // 相对路径
+                },
+                shame: {
+                    keys: ['气','鬼','厌','羞耻', 'shame', '丢人', '躲', '逃', '不仅'],
+                    nameCN: '迷雾幻影 · 隐匿 🌫️', nameEN: 'Misty Phantom Hide',
+                    base: 'Sake 清酒', moodIngredients: '蛋白霜 · 冰川水',
+                    palate: '清冷 / 虚无', note: '想找个地缝钻进去，不如化作一杯雾。',
+                    visualEmoji: '🍶', color: '#bdc3c7',
+                    ingredients: ['收集 🌙 凌晨的浓雾', '加入 ❄️ 冰冷的自我审视', '封存 🧊 沉默'],
+                    audio: './audio/shame.mp3' // 相对路径
+                },
+                guilt: {
+                    keys: ['内疚', 'guilt', '抱歉', '对不起', '后悔', '悔'],
+                    nameCN: '深棕忏悔 · 沉淀 🪵', nameEN: 'Dark Repentance',
+                    base: 'Dark Rum 黑朗姆', moodIngredients: '黑巧克力 · 咖啡',
+                    palate: '厚重 / 微苦', note: '内疚是灵魂的负重训练，为了更好的前行。',
+                    visualEmoji: '🥃', color: '#3e2b26',
+                    ingredients: ['融化 🍫 苦涩的黑巧', '萃取 ☕ 沉重的思绪', '沉淀 🍂 过去的落叶'],
+                    audio: './audio/guilt.mp3' // 相对路径
+                },
+                pride: {
+                    keys: ['发', '自豪', 'pride', '骄傲', '棒', '赢', '光荣'],
+                    nameCN: '皇家荣耀 · 金冠 👑', nameEN: 'Royal Glory Crown',
+                    base: 'Champagne 香槟', moodIngredients: '食用金箔 · 接骨木花',
+                    palate: '气泡 / 闪耀', note: '这是属于你的加冕时刻，尽情闪耀。',
+                    visualEmoji: '🥂', color: '#fadd96',
+                    ingredients: ['撒下 ✨ 闪耀的金粉', '开启 🍾 庆祝的气泡', '注入 🦁 昂扬的勇气'],
+                    audio: './audio/pride.mp3' // 相对路径
+                },
+                anxiety: {
+                    keys: ['独','忧','焦虑', 'anxiety', '急', '怕', '担心', '乱', '未来'],
+                    nameCN: '混沌气旋 · 嘶嘶 ⚡', nameEN: 'Chaos Fizzy Cyclone',
+                    base: 'Tequila 龙舌兰', moodIngredients: '跳跳糖 · 苏打水',
+                    palate: '刺激 / 噼啪作响', note: '既然无法平静，就与混乱共舞。',
+                    visualEmoji: '🍹', color: '#a18cd1',
+                    ingredients: ['投入 🍬 躁动的跳跳糖', '搅拌 🌪️ 混乱的思绪', '挤压 🍋 紧绷的神经'],
+                    audio: './audio/anxiety.mp3' // 相对路径
+                },
+                depression: {
+                    keys: ['夜','哭','困','睡','抑郁', 'depression', '累', '丧', '黑', '无力', '低落'],
+                    nameCN: '深渊凝视 · 寂静 🌑', nameEN: 'Abyss Silent Gaze',
+                    base: 'Whisky 泥煤威士忌', moodIngredients: '黑枸杞 · 活性炭',
+                    palate: '烟熏 / 尘土感', note: '在深渊底部，也能看见最亮的星。',
+                    visualEmoji: '🧉', color: '#232526',
+                    ingredients: ['过滤 🌑 黑夜的沉默', '浸泡 🪵 潮湿的木头', '等待 ⏳ 时间停滞'],
+                    audio: './audio/depression.mp3'
+                },
+                gratitude: {
+                    keys: ['乐','幸福','开心','感激', 'gratitude', '谢谢', '感恩', '好人', '暖'],
+                    nameCN: '琥珀暖阳 · 馈赠 🎁', nameEN: 'Amber Warmth Gift',
+                    base: 'Brandy 白兰地', moodIngredients: '肉桂 · 烤橙皮',
+                    palate: '温暖 / 馥郁', note: '心怀感激，是灵魂最温暖的养料。',
+                    visualEmoji: '🍾', color: '#f5af19',
+                    ingredients: ['烘烤 🍊 温暖的橙皮', '撒入 🪵 感恩的香料', '收集 ☀️ 午后的阳光'],
+                    audio: './audio/gratitude.mp3'
+                },
+                awe: {
+                    keys: ['敬畏', 'awe','静', '震撼', '神圣', '大', '美', 'wow'],
+                    nameCN: '星际尘埃 · 宏大 🌌', nameEN: 'Stardust Grandeur',
+                    base: 'Gin 蝶豆花金酒', moodIngredients: '紫罗兰 · 银粉',
+                    palate: '空灵 / 复杂', note: '面对浩瀚，我们渺小而伟大。',
+                    visualEmoji: '🔮', color: '#667eea',
+                    ingredients: ['捕捉 🌠 划过的流星', '混合 🌌 宇宙的尘埃', '凝视 👁️ 未知的深邃'],
+                    audio: './audio/awe.mp3'
+                }
+            };
+            // 3. 新增：总配方数（计算所有预设酒款总数）
+            const totalRecipes = Object.keys(recipes).length; // 固定值：9
+
+            // 新增：初始化音频
+            const initAudio = () => {
+                if (!audio.value) {
+                    audio.value = new Audio();
+                    audio.value.loop = true; // 设置循环播放
+                    audio.value.volume = 0.3; // 设置音量（0-1）
+                }
+            };
+
+            // 新增：播放音频
+            const playAudio = (audioUrl) => {
+                // 如果当前没有音频对象，先初始化
+                if (!audio.value) {
+                    initAudio();
+                }
+                
+                // 如果要播放的音频和当前不同，先停止当前音频
+                if (currentAudioUrl.value !== audioUrl) {
+                    stopAudio();
+                    audio.value.src = audioUrl;
+                    currentAudioUrl.value = audioUrl;
+                }
+                
+                // 播放音频
+                audio.value.play().catch(error => {
+                    console.log("Audio play failed:", error);
+                    // 音频播放失败时，可能需要用户交互后才能播放
+                    // 可以显示一个提示，让用户点击页面后再播放
+                });
+            };
+
+            // 新增：停止音频
+            const stopAudio = () => {
+                if (audio.value && !audio.value.paused) {
+                    audio.value.pause();
+                    audio.value.currentTime = 0; // 重置到开头
+                }
+            };
+
+            // 新增：切换静音状态
+            const toggleMute = () => {
+                if (audio.value) {
+                    audio.value.muted = !audio.value.muted;
+                    isMuted.value = audio.value.muted;
+                }
+            };
+
+            // 新增：在视图切换时控制音频
+            watch(currentView, (newView, oldView) => {
+                if (newView === 'result' && result.value && result.value.audio) {
+                    // 进入结果页且有音频时，播放对应的音频
+                    playAudio(result.value.audio);
+                } else if (oldView === 'result' && audio.value) {
+                    // 离开结果页时，停止音频
+                    stopAudio();
+                }
+            });
+            // --- 逻辑方法 ---
+
+            const toggleFlavor = (f) => {
+                if (selectedFlavors.value.includes(f)) {
+                    selectedFlavors.value = selectedFlavors.value.filter(item => item !== f);
+                } else {
+                    selectedFlavors.value.push(f);
+                }
+            };
+
+            // 新增：点击情绪标签，填充到文本框（可选择“替换”或“追加”）
+            const selectMoodTag = (moodText) => {
+                // 方式1：替换文本框内容（覆盖原有）
+                inputText.value = moodText;
+                
+                // 方式2：追加文本框内容（保留原有，用逗号分隔）
+                // inputText.value = inputText.value ? `${inputText.value}，${moodText}` : moodText;
+            };
+
+            const flavorTagsString = computed(() => {
+                if(selectedFlavors.value.length === 0) return '';
+                return '+ ' + selectedFlavors.value.map(f => f.split(' ')[1]).join(' / '); // 提取中文
+            });
+
+            // 核心分析逻辑
+            const analyze = (text) => {
+                let maxScore = 0;
+                let matchedKey = 'awe'; // 默认值: 敬畏 (中性保底)
+
+                for (const key in recipes) {
+                    let score = 0;
+                    recipes[key].keys.forEach(k => {
+                        if (text.includes(k)) score += 5;
+                    });
+                    if (score > maxScore) {
+                        maxScore = score;
+                        matchedKey = key;
+                    }
+                }
+                return recipes[matchedKey];
+            };
+
+            // 开始调制（常规或盲盒）
+            const startMixing = async (forcedProfile = null) => {
+                // 如果是常规模式且没输入，稍微提示一下（这里简单处理为直接过，用默认）
+                let targetProfile;
+                saved.value = false;
+                
+                if (forcedProfile) {
+                    targetProfile = forcedProfile;
+                } else {
+                    // 分析逻辑
+                    targetProfile = analyze(inputText.value || 'peace'); // 默认给点东西
+                }
+
+                currentView.value = 'mixing';
+
+                // 设置液体颜色
+                const blob = fluidBlob.value;
+                if(blob) blob.style.background = targetProfile.color;
+
+                // 播放诗意成分动画 (3步)
+                const steps = targetProfile.ingredients;
+                
+                // GSAP 动画序列
+                let tl = gsap.timeline();
+                
+                // 步骤 1
+                tl.to({}, { duration: 0.1, onComplete: () => currentIngredientText.value = steps[0] })
+                  .to(blob, { scale: 1.1, duration: 1.5, ease: "sine.inOut" })
+                // 步骤 2
+                  .to({}, { duration: 0.1, onComplete: () => currentIngredientText.value = steps[1] })
+                  .to(blob, { scale: 0.9, rotation: 180, duration: 1.5, ease: "sine.inOut" })
+                // 步骤 3
+                  .to({}, { duration: 0.1, onComplete: () => currentIngredientText.value = steps[2] })
+                  .to(blob, { scale: 1.2, rotation: 360, duration: 1.5, ease: "elastic.out(1, 0.5)" })
+                // 完成
+                  .to({}, { duration: 0.5, onComplete: () => showResult(targetProfile) });
+            };
+
+            const startBlindBox = () => {
+                const keys = Object.keys(recipes);
+                const randomKey = keys[Math.floor(Math.random() * keys.length)];
+                inputText.value = "🎁 盲盒赠送: " + recipes[randomKey].nameCN; // UI上显示一点盲盒感
+                startMixing(recipes[randomKey]);
+            };
+
+            // 新增：气泡生成逻辑
+            const createBubbles = () => {
+                // 指向酒杯的气泡容器（唯一ID）
+                const container = document.getElementById('drink-bubble-container');
+                if (!container) return;
+                // 清空原有气泡
+                container.innerHTML = '';
+                const bubbleCount = 8; // 增加气泡数量，更明显
+
+                for(let i=0; i<bubbleCount; i++) {
+                    setTimeout(() => {
+                        const bubble = document.createElement('div');
+                        bubble.className = 'bubble';
+                        // 随机大小 (3-8px)，更大更明显
+                        const size = Math.random() * 3 + 3 + 'px';
+                        bubble.style.width = size;
+                        bubble.style.height = size;
+                        // 随机水平位置 (10%-90%)
+                        bubble.style.left = (Math.random() * 80 + 10) + '%';
+                        // 随机动画时长 (3-6s)
+                        bubble.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                        // 随机延迟
+                        bubble.style.animationDelay = Math.random() * 2 + 's';
+                        
+                        container.appendChild(bubble);
+                    }, i * 500);
+                }
+            };
+
+            const showResult = (profile) => {
+                result.value = profile;
+                resultBg.value = `radial-gradient(circle at center, ${profile.color} 200%, rgba(0,0,0,0) 200%)`;
+                currentView.value = 'result';
+                
+                // 新增：自动记录到历史记录（每次调制都加，含时间）
+                const now = new Date();
+                historyRecords.value.unshift({
+                    ...profile,
+                    dateStr: now.toLocaleDateString(),
+                    timeStr: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    mixTime: now.toLocaleString() // 调制时间
+                });
+                // 新增：延迟触发气泡生成（等视图切换完成）
+                setTimeout(() => {
+                    createBubbles();
+                }, 300);
+                // 新增：播放对应情绪的音频
+                if (profile.audio) {
+                    // 由于浏览器的自动播放策略，可能需要用户交互后才能播放
+                    // 这里使用 setTimeout 延迟播放，增加成功几率
+                    setTimeout(() => {
+                        playAudio(profile.audio);
+                    }, 500);
+                }
+            };
+
+            const saveDrink = () => {
+                // if(saved.value) return;
+                // // history.value.push({ ...result.value, date: new Date() });
+                
+                // if(!result.value) return;
+                // const now = new Date();
+                // history.value.unshift({
+                //     ...result.value,
+                //     dateStr: now.toLocaleDateString(),
+                //     timeStr: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                // });
+                // // alert("已收藏至酒单 ❤\nSaved to collection.");
+                // saved.value = true;
+
+                if(saved.value) return;
+                if(!result.value) return;
+                
+                // 去重逻辑：避免重复收藏同一酒款（按 nameCN 判断）
+                const isExisted = collections.value.some(item => item.nameCN === result.value.nameCN);
+                if (isExisted) {
+                    // alert("已收藏过这款酒啦 ✨");
+                    saved.value = true;
+                    return;
+                }
+
+                // 保存到收藏夹
+                collections.value.unshift({
+                    ...result.value,
+                    collectTime: new Date().toLocaleString() // 收藏时间
+                });
+                saved.value = true;
+            };
+
+            const goToHistory = () => {
+                currentView.value = 'history';
+            };
+
+            // 新增：跳转到收藏夹页面
+            const goToCollection = () => {
+                currentView.value = 'collection';
+            };
+
+            const reset = () => {
+                currentView.value = 'home';
+                inputText.value = '';
+                selectedFlavors.value = [];
+
+                // 新增：停止音频
+                stopAudio();
+
+                setTimeout(() => {
+                    result.value = null;
+                }, 500);
+            };
+
+            // 新增：再调一杯 - 动画重置逻辑
+            const reloadAnimation = () => {
+                // 页面淡出
+                document.body.classList.add('page-fade-out');
+                // 新增：停止音频
+                stopAudio();
+
+                setTimeout(() => {
+                    // 重置状态
+                    currentView.value = 'home';
+                    inputText.value = '';
+                    selectedFlavors.value = [];
+                    saved.value = false;
+                    result.value = null;
+                    // 移除淡出类，恢复页面
+                    document.body.classList.remove('page-fade-out');
+                }, 500);
+            };
+
+            // 创建气泡动效
+            setInterval(() => {
+                if (currentView.value === 'mixing' && fluidBlob.value) {
+                    const b = document.createElement('div');
+                    b.classList.add('bubble');
+                    const size = Math.random() * 15 + 5 + 'px';
+                    b.style.width = size;
+                    b.style.height = size;
+                    b.style.left = Math.random() * 80 + 10 + '%';
+                    b.style.bottom = '10%';
+                    fluidBlob.value.appendChild(b);
+                    setTimeout(() => b.remove(), 4000);
+                }
+            }, 400);
+
+
+            return {
+                currentView,
+                inputText,
+                flavorOptions,
+                selectedFlavors,
+                toggleFlavor,
+                flavorTagsString,
+                moodOptions, // 新增：导出情绪标签列表
+                selectMoodTag, // 新增：导出点击方法
+                startMixing,
+                startBlindBox,
+                fluidBlob,
+                currentIngredientText,
+                bubbleContainer, // 新增：导出气泡容器ref
+                reloadAnimation, // 新增：导出重置动画方法
+                result,
+                resultBg,
+                saveDrink,
+                historyRecords, // 替换：原 history 改为 historyRecords
+                collections,    // 新增：收藏夹数组
+                totalRecipes,   // 新增：总配方数
+                // history,
+                goToHistory,
+                goToCollection, // 新增：跳收藏夹的方法（下一步定义）
+                reset,
+                saved, // 新增：导出saved状态
+                // 新增：导出音频相关的方法和状态
+                isMuted,
+                toggleMute
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
