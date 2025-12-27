@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Holiday Postcard Studio Ultimate</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Times+New+Roman&family=Indie+Flower&family=Pacifico&family=Dancing+Script&family=Handlee&family=Courier+Prime&family=Special+Elite&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --color-gold: #d4af37;
+            --glass-bg: rgba(20, 20, 20, 0.9);
+            --glass-border: rgba(212, 175, 55, 0.4);
+            --modal-overlay: rgba(0, 0, 0, 0.9);
+            --paper-color: #f4f1ea;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fceea7;
+            font-family: 'Times New Roman', serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Scenes */
+        .scene-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.8s ease;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .scene-active {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 2;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Buttons */
+        .btn {
+            pointer-events: auto;
+            cursor: pointer;
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            padding: 8px 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-gold);
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 4px;
+            margin: 2px;
+        }
+
+        .btn:hover {
+            background: var(--color-gold);
+            color: #000;
+        }
+
+        .btn.active {
+            background: var(--color-gold);
+            color: #000;
+            box-shadow: 0 0 10px var(--color-gold);
+        }
+
+        .top-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .btn-group {
+            pointer-events: none;
+            display: flex;
+            gap: 5px;
+        }
+
+        /* Custom Panel (Added Missing CSS) */
+        #custom-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 250px;
+            background: var(--glass-bg);
+            border: 1px solid var(--color-gold);
+            border-radius: 8px;
+            padding: 15px;
+            pointer-events: auto;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            z-index: 20;
+        }
+
+        #custom-panel.visible {
+            display: flex;
+        }
+
+        .panel-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Cinzel';
+            font-size: 12px;
+        }
+
+        .color-wrap {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid #fff;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .color-wrap input[type=color] {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            cursor: pointer;
+            opacity: 0;
+        }
+
+        /* Modal */
+        #postcard-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--modal-overlay);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        #postcard-modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 3D Flip */
+        .pc-scene {
+            width: 600px;
+            height: 375px;
+            perspective: 1500px;
+            margin-bottom: 20px;
+        }
+
+        .pc-card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .pc-card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .pc-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            background: var(--paper-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .pc-face-back {
+            transform: rotateY(180deg);
+        }
+
+        canvas.pc-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: move;
+        }
+
+        /* Editor */
+        .editor-panel {
+            width: 600px;
+            background: #1a1a1a;
+            border: 1px solid var(--color-gold);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .tab-header {
+            display: flex;
+            border-bottom: 1px solid #333;
+            background: #111;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: #888;
+            font-family: 'Cinzel';
+            cursor: pointer;
+            transition: 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--color-gold);
+            border-bottom-color: var(--color-gold);
+            background: #222;
+        }
+
+        .tab-content {
+            padding: 15px;
+            height: 190px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Controls */
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            display: block;
+            color: var(--color-gold);
+            font-size: 10px;
+            margin-bottom: 4px;
+            font-family: 'Cinzel';
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type=text],
+        textarea,
+        select {
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px;
+            border-radius: 4px;
+            font-family: sans-serif;
+            flex: 1;
+        }
+
+        input[type=range] {
+            flex: 1;
+            accent-color: var(--color-gold);
+        }
+
+        input[type=color] {
+            width: 25px;
+            height: 25px;
+            border: none;
+            padding: 0;
+            background: none;
+            cursor: pointer;
+        }
+
+        .layout-preview {
+            width: 40px;
+            height: 25px;
+            border: 1px solid #555;
+            cursor: pointer;
+            margin-right: 5px;
+            background: #333;
+            position: relative;
+        }
+
+        .layout-preview.active {
+            border-color: var(--color-gold);
+            background: #444;
+        }
+
+        .l-trad .line {
+            position: absolute;
+            right: 30%;
+            top: 10%;
+            bottom: 10%;
+            width: 1px;
+            border-right: 1px dashed #777;
+        }
+
+        .l-mod .line {
+            position: absolute;
+            bottom: 20%;
+            left: 5%;
+            right: 5%;
+            height: 1px;
+            background: #777;
+        }
+
+        .l-min .line {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 2px;
+        }
+
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease;
+            pointer-events: auto;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-top: 2px solid var(--color-gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <div style="font-family:'Cinzel'; color:#d4af37; letter-spacing:3px;">POSTCARD STUDIO</div>
+    </div>
+
+    <!-- Backgrounds -->
+    <div id="three-container" class="scene-layer"></div>
+    <canvas id="garden-canvas" class="scene-layer scene-active"></canvas>
+
+    <!-- UI -->
+    <div id="ui-layer">
+        <div class="top-bar">
+            <div class="btn-group">
+                <button id="btn-switch" class="btn">Switch Scene</button>
+                <button id="btn-daynight" class="btn">Day/Night</button>
+                <button id="btn-clear" class="btn">Clear</button>
+                <button id="btn-save" class="btn">Save Img</button>
+                <button id="btn-style" class="btn" style="border-color:#fff; color:#fff;">Customize</button>
+            </div>
+            <div class="btn-group">
+                <button id="btn-postcard" class="btn active" style="border: 1px solid #fff;">📮 Create Postcard</button>
+            </div>
+        </div>
+
+        <!-- Customization Panel (Was Missing) -->
+        <div id="custom-panel">
+            <!-- Added id="panel-header" for dragging -->
+            <div id="panel-header" style="display:flex; justify-content:space-between; margin-bottom:10px; cursor: move; padding-bottom:5px; border-bottom:1px solid #333;">
+                <span style="color:var(--color-gold); font-family:'Cinzel'; pointer-events:none;">FLOWER SETTINGS</span>
+                <span id="btn-close-panel" style="cursor:pointer; color:#888;">✕</span>
+            </div>
+
+            <!-- NEW: Flower Shape Selector -->
+            <div class="panel-row">
+                <span>Flower Type</span>
+                <select id="sel-flower-shape" style="width: 80px; padding:2px; font-size:11px;">
+                    <option value="daisy">Daisy</option>
+                    <option value="tulip">Tulip</option>
+                    <option value="star">Star</option>
+                </select>
+            </div>
+            
+            <div class="panel-row">
+                <span>Petal Count</span>
+                <span id="petal-val">8</span>
+            </div>
+            <input type="range" id="inp-petals" min="5" max="20" value="8">
+
+            <div class="panel-row">
+                <span>Petal Color</span>
+                <div class="color-wrap" id="wrap-petal" style="background:#FFFFFF;">
+                    <input type="color" id="inp-petal-color" value="#FFFFFF">
+                </div>
+            </div>
+
+            <div class="panel-row">
+                <span>Center Color</span>
+                <div class="color-wrap" id="wrap-center" style="background:#FFA500;">
+                    <input type="color" id="inp-center-color" value="#FFA500">
+                </div>
+            </div>
+
+            <div class="panel-row">
+                <span>Stem Color</span>
+                <div class="color-wrap" id="wrap-stem" style="background:#90EE90;">
+                    <input type="color" id="inp-stem-color" value="#90EE90">
+                </div>
+            </div>
+
+            <div class="panel-row">
+                <span>Background</span>
+                <div class="color-wrap" id="wrap-bg" style="background:#E0F8E0;">
+                    <input type="color" id="inp-bg-color" value="#E0F8E0">
+                </div>
+            </div>
+        </div>
+
+        <div id="daisy-stats"
+            style="position:absolute; bottom:20px; right:20px; font-family:'Cinzel'; pointer-events:none; text-shadow:0 1px 2px #000;">
+        </div>
+    </div>
+
+    <!-- POSTCARD EDITOR MODAL -->
+    <div id="postcard-modal">
+        <div class="pc-scene">
+            <div class="pc-card" id="pc-card-el">
+                <div class="pc-face"><canvas id="pc-canvas-front" class="pc-canvas" width="1200" height="750"></canvas>
+                </div>
+                <div class="pc-face pc-face-back"><canvas id="pc-canvas-back" class="pc-canvas" width="1200"
+                        height="750"></canvas></div>
+            </div>
+        </div>
+
+        <div class="editor-panel">
+            <div class="tab-header">
+                <button class="tab-btn active" data-tab="layout">Layout & Elements</button>
+                <button class="tab-btn" data-tab="text">Text & Content</button>
+                <button class="tab-btn" data-tab="back">Back Design</button>
+            </div>
+
+            <!-- Tab 1: Layout -->
+            <div id="tab-layout" class="tab-content active">
+                <div class="control-group">
+                    <span class="control-label">Card Side (Flip)</span>
+                    <div class="row">
+                        <button class="btn active" id="btn-face-front">Writing Side</button>
+                        <button class="btn" id="btn-face-back">Image Side</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Front Layout</span>
+                    <div class="row">
+                        <div class="layout-preview l-trad active" data-layout="traditional" title="Traditional">
+                            <div class="line"></div>
+                        </div>
+                        <div class="layout-preview l-mod" data-layout="modern" title="Modern">
+                            <div class="line"></div>
+                        </div>
+                        <div class="layout-preview l-min" data-layout="minimal" title="Minimal"></div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Stamp & Postmark Settings</span>
+                    <div class="row">
+                        <select id="sel-stamp">
+                            <option value="none">No Stamp</option>
+                            <option value="xmas" selected>Christmas</option>
+                            <option value="retro">Retro</option>
+                        </select>
+                        <span style="font-size:10px; color:#aaa;">Size:</span>
+                        <input type="range" id="inp-stamp-scale" min="0.5" max="1.5" step="0.1" value="1.0"
+                            style="max-width:60px">
+                    </div>
+                    <div class="row" style="margin-top:8px;">
+                        <span style="font-size:10px; color:#aaa;">Postmark:</span>
+                        <select id="sel-postmark">
+                            <option value="none">None</option>
+                            <option value="ring">Classic Ring</option>
+                            <option value="wave">Wavy Cancel</option>
+                            <option value="box">Rectangular</option>
+                        </select>
+                        <button class="btn active" id="btn-toggle-zip">Zip Code</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Text -->
+            <div id="tab-text" class="tab-content">
+                <div class="control-group">
+                    <span class="control-label">Select Text Block (Drag on canvas to move)</span>
+                    <div class="row">
+                        <button class="btn active" id="btn-area-write">Message</button>
+                        <button class="btn" id="btn-area-addr">Address</button>
+                        <button class="btn" id="btn-area-back">Back Caption</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <textarea id="inp-text" rows="2"></textarea>
+                </div>
+                <div class="control-group">
+                    <div class="row">
+                        <select id="sel-font" style="flex:2">
+                            <option value="Indie Flower">Indie Flower</option>
+                            <option value="Pacifico">Pacifico</option>
+                            <option value="Dancing Script">Dancing Script</option>
+                            <option value="Handlee">Handlee</option>
+                            <option value="Courier Prime">Typewriter</option>
+                            <option value="Special Elite">Special Elite</option>
+                        </select>
+                        <input type="color" id="inp-color">
+                        <input type="range" id="inp-size" min="20" max="150">
+                        <span id="val-size" style="font-size:10px; width:30px;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Back -->
+            <div id="tab-back" class="tab-content">
+                <div class="control-group">
+                    <span class="control-label">Background</span>
+                    <div class="row">
+                        <button class="btn" id="btn-use-snapshot">Reset Snapshot</button>
+                        <label class="btn">Upload BG<input type="file" id="inp-img-upload" accept="image/*"
+                                style="display:none"></label>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Decorations</span>
+                    <div class="row">
+                        <button class="btn" id="btn-toggle-img-stamp">Back Stamp Box</button>
+                        <label class="btn" id="lbl-stamp-upload" style="display:none">Upload Stamp<input type="file"
+                                id="inp-img-stamp" accept="image/*" style="display:none"></label>
+                        <label class="btn">Add Sticker<input type="file" id="inp-illu-upload" accept="image/*"
+                                style="display:none"></label>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Selected Sticker Scale</span>
+                    <div class="row"><input type="range" id="inp-illu-scale" min="0.2" max="3.0" step="0.1" value="1.0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div
+                style="border-top:1px solid #333; padding:10px; display:flex; justify-content:space-between; align-items:center; background:#111;">
+                <button id="btn-close-pc" class="btn" style="border-color:#555; color:#888;">Close</button>
+                <button id="btn-download-pc" class="btn"
+                    style="background:var(--color-gold); color:#000;">Download</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        // Note: Three.js imports are present for future expansion or background effects, 
+        // but current logic uses 2D Canvas for the garden interaction.
+
+        // --- POSTCARD ENGINE ---
+        class PostcardEngine {
+            constructor(sourceCanvas, appInstance) {
+                this.sourceCanvas = sourceCanvas;
+                this.app = appInstance; // <--- 保存 app 实例引用
+                this.modal = document.getElementById('postcard-modal');
+                this.cardEl = document.getElementById('pc-card-el');
+                this.cf = document.getElementById('pc-canvas-front');
+                this.cb = document.getElementById('pc-canvas-back');
+                this.ctxF = this.cf.getContext('2d');
+                this.ctxB = this.cb.getContext('2d');
+
+                this.state = {
+                    side: 'front',
+                    layout: 'traditional',
+                    showZip: true,
+                    zipCode: ['', '', '', '', '', ''],
+
+                    // Front Content
+                    stamp: { type: 'xmas', x: 1020, y: 60, w: 100, h: 120, img: null, scale: 1.0 },
+                    postmarkType: 'none', // none, ring, wave, box
+
+                    // Texts
+                    textWrite: { val: "Merry Christmas! 🎄\nWishing you joy & peace.", font: "Indie Flower", size: 40, color: "#333333", x: 50, y: 50 },
+                    textAddr: { val: "TO: Santa Claus\nNorth Pole\nH5H 5H5", font: "Courier Prime", size: 30, color: "#555555", x: 780, y: 350 },
+                    textBack: { val: "Holiday 2025", font: "Pacifico", size: 60, color: "#ffffff", x: 600, y: 650 },
+                    activeTextKey: 'textWrite',
+
+                    // Back Content
+                    bgImage: null,
+                    imgProps: { x: 600, y: 375, scale: 1.0 },
+                    backStamp: { show: false, img: null, x: 100, y: 100, w: 100, h: 120 },
+                    illustrations: [],
+                    selectedIlluId: null,
+
+                    dragging: null
+                };
+
+                this.loadStamp('xmas');
+                this.bindUI();
+                this.bindInteraction();
+            }
+
+            bindUI() {
+                // Open/Close
+                document.getElementById('btn-postcard').onclick = () => this.open();
+                document.getElementById('btn-close-pc').onclick = () => this.modal.classList.remove('visible');
+
+                // Tabs
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                        btn.classList.add('active');
+                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+                    };
+                });
+
+                // Flip
+                const setSide = (side) => {
+                    this.state.side = side;
+                    if (side === 'back') {
+                        this.cardEl.classList.add('is-flipped');
+                        document.getElementById('btn-face-front').classList.remove('active');
+                        document.getElementById('btn-face-back').classList.add('active');
+                    } else {
+                        this.cardEl.classList.remove('is-flipped');
+                        document.getElementById('btn-face-front').classList.add('active');
+                        document.getElementById('btn-face-back').classList.remove('active');
+                    }
+                };
+                document.getElementById('btn-face-front').onclick = () => setSide('front');
+                document.getElementById('btn-face-back').onclick = () => setSide('back');
+
+                // Front Settings
+                document.querySelectorAll('.layout-preview').forEach(el => {
+                    el.onclick = () => {
+                        document.querySelectorAll('.layout-preview').forEach(p => p.classList.remove('active'));
+                        el.classList.add('active');
+                        this.state.layout = el.dataset.layout;
+                        this.resetTextPos();
+                        this.renderFront();
+                    }
+                });
+                document.getElementById('btn-toggle-zip').onclick = (e) => {
+                    this.state.showZip = !this.state.showZip;
+                    e.target.classList.toggle('active');
+                    this.renderFront();
+                };
+                document.getElementById('sel-stamp').onchange = (e) => this.loadStamp(e.target.value);
+                document.getElementById('inp-stamp-scale').oninput = (e) => {
+                    this.state.stamp.scale = parseFloat(e.target.value);
+                    this.renderFront();
+                };
+                document.getElementById('sel-postmark').onchange = (e) => {
+                    this.state.postmarkType = e.target.value;
+                    this.renderFront();
+                };
+
+                // Back Settings
+                document.getElementById('btn-use-snapshot').onclick = () => this.captureSnapshot();
+                document.getElementById('inp-img-upload').onchange = (e) => this.loadImg(e.target.files[0], 'bg');
+                document.getElementById('btn-toggle-img-stamp').onclick = (e) => {
+                    this.state.backStamp.show = !this.state.backStamp.show;
+                    e.target.classList.toggle('active');
+                    document.getElementById('lbl-stamp-upload').style.display = this.state.backStamp.show ? 'inline-flex' : 'none';
+                    this.renderBack();
+                };
+                document.getElementById('inp-img-stamp').onchange = (e) => this.loadImg(e.target.files[0], 'backStamp');
+                document.getElementById('inp-illu-upload').onchange = (e) => this.loadImg(e.target.files[0], 'illu');
+                document.getElementById('inp-illu-scale').oninput = (e) => {
+                    if (this.state.selectedIlluId !== null) {
+                        const ill = this.state.illustrations.find(i => i.id === this.state.selectedIlluId);
+                        if (ill) { ill.scale = parseFloat(e.target.value); this.renderBack(); }
+                    }
+                };
+
+                // Text Settings
+                const inputs = { val: document.getElementById('inp-text'), font: document.getElementById('sel-font'), color: document.getElementById('inp-color'), size: document.getElementById('inp-size') };
+                const btns = { write: document.getElementById('btn-area-write'), addr: document.getElementById('btn-area-addr'), back: document.getElementById('btn-area-back') };
+
+                const updateUI = () => {
+                    const t = this.state[this.state.activeTextKey];
+                    inputs.val.value = t.val; inputs.font.value = t.font; inputs.color.value = t.color; inputs.size.value = t.size;
+                    document.getElementById('val-size').innerText = t.size + 'px';
+                };
+
+                Object.keys(btns).forEach(k => {
+                    btns[k].onclick = () => {
+                        this.state.activeTextKey = k === 'write' ? 'textWrite' : (k === 'addr' ? 'textAddr' : 'textBack');
+                        Object.values(btns).forEach(b => b.classList.remove('active'));
+                        btns[k].classList.add('active');
+                        updateUI();
+                        if (k === 'back' && this.state.side === 'front') setSide('back');
+                        if (k !== 'back' && this.state.side === 'back') setSide('front');
+                    };
+                });
+
+                inputs.val.oninput = (e) => { this.state[this.state.activeTextKey].val = e.target.value; this.renderAll(); };
+                inputs.font.onchange = (e) => { this.state[this.state.activeTextKey].font = e.target.value; this.renderAll(); };
+                inputs.color.oninput = (e) => { this.state[this.state.activeTextKey].color = e.target.value; this.renderAll(); };
+                inputs.size.oninput = (e) => { this.state[this.state.activeTextKey].size = parseInt(e.target.value); document.getElementById('val-size').innerText = e.target.value + 'px'; this.renderAll(); };
+                updateUI();
+
+                // Download
+                document.getElementById('btn-download-pc').onclick = () => {
+                    const cvs = this.state.side === 'front' ? this.cf : this.cb;
+                    const a = document.createElement('a');
+                    a.download = `Postcard_${this.state.side}.png`; a.href = cvs.toDataURL(); a.click();
+                };
+            }
+
+            renderAll() { this.renderFront(); this.renderBack(); }
+
+            resetTextPos() {
+                const layout = this.state.layout;
+                if (layout === 'traditional') { this.state.textWrite.x = 50; this.state.textWrite.y = 50; this.state.textAddr.x = 780; this.state.textAddr.y = 350; }
+                else if (layout === 'modern') { this.state.textWrite.x = 50; this.state.textWrite.y = 50; this.state.textAddr.x = 50; this.state.textAddr.y = 520; }
+                else { this.state.textWrite.x = 50; this.state.textWrite.y = 50; this.state.textAddr.x = 800; this.state.textAddr.y = 550; }
+            }
+
+            loadImg(file, type) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        if (type === 'bg') { this.state.bgImage = img; this.state.imgProps = { x: 600, y: 375, scale: 1.0 }; }
+                        else if (type === 'backStamp') { this.state.backStamp.img = img; }
+                        else if (type === 'illu') {
+                            this.state.illustrations.push({ id: Date.now(), img: img, x: 600, y: 375, scale: 0.5 });
+                            this.state.selectedIlluId = this.state.illustrations[this.state.illustrations.length - 1].id;
+                        }
+                        this.renderBack();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            loadStamp(type) {
+                this.state.stamp.type = type;
+                if (type === 'none') { this.state.stamp.img = null; this.renderFront(); return; }
+                const c = document.createElement('canvas'); c.width = 100; c.height = 120;
+                const x = c.getContext('2d');
+                x.fillStyle = "#fff"; x.fillRect(0, 0, 100, 120);
+                x.fillStyle = type === 'xmas' ? '#c0392b' : (type === 'retro' ? '#d35400' : '#f1c40f');
+                x.fillRect(5, 5, 90, 110);
+                x.fillStyle = "#fff"; x.font = "14px Times"; x.textAlign = "center";
+                x.fillText(type.toUpperCase(), 50, 60); x.font = "10px Times"; x.fillText("POSTAGE", 50, 80);
+                const img = new Image();
+                img.onload = () => { this.state.stamp.img = img; this.renderFront(); };
+                img.src = c.toDataURL();
+            }
+
+            bindInteraction() {
+                const getPos = (e, cvs) => {
+                    const r = cvs.getBoundingClientRect();
+                    return { x: (e.clientX - r.left) * (cvs.width / r.width), y: (e.clientY - r.top) * (cvs.height / r.height) };
+                };
+
+                // Front
+                this.cf.addEventListener('mousedown', (e) => {
+                    const p = getPos(e, this.cf);
+                    if (this.state.showZip) {
+                        for (let i = 0; i < 6; i++) {
+                            const bx = 800 + (i * 45);
+                            if (p.x > bx && p.x < bx + 35 && p.y > 650 && p.y < 695) {
+                                const n = prompt("Digit:", this.state.zipCode[i]);
+                                if (n !== null) { this.state.zipCode[i] = n.charAt(0); this.renderFront(); }
+                                return;
+                            }
+                        }
+                    }
+                    const s = this.state.stamp;
+                    if (s.img && p.x > s.x && p.x < s.x + (s.w * s.scale) && p.y > s.y && p.y < s.y + (s.h * s.scale)) {
+                        this.state.dragging = { type: 'frontStamp', ox: p.x - s.x, oy: p.y - s.y }; return;
+                    }
+                    // Improved Text Hit Test
+                    ['textWrite', 'textAddr'].forEach(k => {
+                        const t = this.state[k];
+                        this.ctxF.font = `${t.size}px "${t.font}"`;
+                        const m = this.ctxF.measureText(t.val.split('\n')[0]); // Approximate with first line width
+                        const h = t.size * t.val.split('\n').length * 1.2;
+                        if (p.x > t.x && p.x < t.x + m.width && p.y > t.y && p.y < t.y + h) {
+                            this.state.dragging = { type: 'text', key: k, ox: p.x - t.x, oy: p.y - t.y };
+                        }
+                    });
+                });
+
+                // Back
+                this.cb.addEventListener('mousedown', (e) => {
+                    const p = getPos(e, this.cb);
+                    const tb = this.state.textBack;
+                    this.ctxB.font = `${tb.size}px "${tb.font}"`;
+                    const tm = this.ctxB.measureText(tb.val.split('\n')[0]);
+                    // Center align text hit check
+                    if (Math.abs(p.x - tb.x) < tm.width / 2 && Math.abs(p.y - tb.y) < tb.size) {
+                        this.state.dragging = { type: 'text', key: 'textBack', ox: p.x - tb.x, oy: p.y - tb.y }; return;
+                    }
+                    for (let i = this.state.illustrations.length - 1; i >= 0; i--) {
+                        const ill = this.state.illustrations[i];
+                        const w = ill.img.width * ill.scale; const h = ill.img.height * ill.scale;
+                        if (Math.abs(p.x - ill.x) < w / 2 && Math.abs(p.y - ill.y) < h / 2) {
+                            this.state.selectedIlluId = ill.id;
+                            this.state.dragging = { type: 'illu', id: ill.id, ox: p.x - ill.x, oy: p.y - ill.y };
+                            document.getElementById('inp-illu-scale').value = ill.scale;
+                            return;
+                        }
+                    }
+                    const bs = this.state.backStamp;
+                    if (bs.show && p.x > bs.x && p.x < bs.x + bs.w && p.y > bs.y && p.y < bs.y + bs.h) {
+                        this.state.dragging = { type: 'backStamp', ox: p.x - bs.x, oy: p.y - bs.y }; return;
+                    }
+                    this.state.dragging = { type: 'bg', ox: p.x - this.state.imgProps.x, oy: p.y - this.state.imgProps.y };
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (!this.state.dragging) return;
+                    e.preventDefault();
+                    if (this.state.side === 'front') {
+                        const p = getPos(e, this.cf);
+                        const d = this.state.dragging;
+                        if (d.type === 'frontStamp') { this.state.stamp.x = p.x - d.ox; this.state.stamp.y = p.y - d.oy; }
+                        else if (d.type === 'text') { this.state[d.key].x = p.x - d.ox; this.state[d.key].y = p.y - d.oy; }
+                        this.renderFront();
+                    } else {
+                        const p = getPos(e, this.cb);
+                        const d = this.state.dragging;
+                        if (d.type === 'bg') { this.state.imgProps.x = p.x - d.ox; this.state.imgProps.y = p.y - d.oy; }
+                        else if (d.type === 'backStamp') { this.state.backStamp.x = p.x - d.ox; this.state.backStamp.y = p.y - d.oy; }
+                        else if (d.type === 'illu') {
+                            const ill = this.state.illustrations.find(i => i.id === d.id);
+                            if (ill) { ill.x = p.x - d.ox; ill.y = p.y - d.oy; }
+                        }
+                        else if (d.type === 'text') { this.state.textBack.x = p.x - d.ox; this.state.textBack.y = p.y - d.oy; }
+                        this.renderBack();
+                    }
+                });
+                window.addEventListener('mouseup', () => this.state.dragging = null);
+            }
+
+            open() {
+                this.captureSnapshot();
+                this.modal.classList.add('visible');
+                this.renderAll();
+            }
+
+            captureSnapshot() {
+                // 1. 标记开始截图，并强制渲染一帧“干净”的画面（不含虚线框）
+                STATE.isSnapshotting = true;
+                if (this.app) this.app.render(0); 
+
+                // 2. 执行原有的计算与截图逻辑
+                const sw = this.sourceCanvas.width; const sh = this.sourceCanvas.height;
+                let boxW = sw * 0.8; let boxH = boxW / (8 / 5);
+                if (boxH > sh * 0.8) { boxH = sh * 0.8; boxW = boxH * (8 / 5); }
+                const sx = (sw - boxW) / 2; const sy = (sh - boxH) / 2;
+                
+                const tC = document.createElement('canvas'); tC.width = 1200; tC.height = 750;
+                tC.getContext('2d').drawImage(this.sourceCanvas, sx, sy, boxW, boxH, 0, 0, 1200, 750);
+                
+                // 3. 截图数据拿到后，立即恢复状态（恢复虚线框显示）
+                STATE.isSnapshotting = false;
+                
+                const img = new Image();
+                img.onload = () => {
+                    this.state.bgImage = img;
+                    this.state.imgProps = { x: 600, y: 375, scale: 1.0 };
+                    this.renderBack();
+                };
+                img.src = tC.toDataURL();
+            }
+
+            renderFront() {
+                const ctx = this.ctxF; const w = 1200, h = 750;
+                ctx.fillStyle = "#f4f1ea"; ctx.fillRect(0, 0, w, h);
+                // Noise
+                for (let i = 0; i < 3000; i++) { ctx.fillStyle = "rgba(0,0,0,0.03)"; ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+
+                // Layout
+                ctx.strokeStyle = "#ccc"; ctx.lineWidth = 2; ctx.beginPath();
+                if (this.state.layout === 'traditional') {
+                    ctx.setLineDash([10, 10]); ctx.moveTo(w * 0.6, h * 0.1); ctx.lineTo(w * 0.6, h * 0.9);
+                    for (let i = 0; i < 4; i++) { ctx.moveTo(w * 0.65, h * 0.5 + i * 60); ctx.lineTo(w * 0.95, h * 0.5 + i * 60); }
+                } else if (this.state.layout === 'modern') {
+                    ctx.setLineDash([]); ctx.moveTo(w * 0.05, h * 0.65); ctx.lineTo(w * 0.95, h * 0.65);
+                }
+                ctx.stroke(); ctx.setLineDash([]);
+
+                // Zip
+                if (this.state.showZip) {
+                    ctx.fillStyle = "#999"; ctx.font = "16px sans-serif"; ctx.fillText("ZIP CODE:", 800, 630);
+                    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1;
+                    for (let i = 0; i < 6; i++) {
+                        const bx = 800 + (i * 45);
+                        ctx.strokeRect(bx, 650, 35, 45);
+                        if (this.state.zipCode[i]) { ctx.fillStyle = "#333"; ctx.font = "30px Courier Prime"; ctx.fillText(this.state.zipCode[i], bx + 8, 682); }
+                    }
+                }
+
+                // Text
+                const drawT = (obj) => {
+                    ctx.font = `${obj.size}px "${obj.font}"`; ctx.fillStyle = obj.color; ctx.textBaseline = "top";
+                    obj.val.split('\n').forEach((l, i) => ctx.fillText(l, obj.x, obj.y + i * obj.size * 1.2));
+                };
+                drawT(this.state.textWrite); drawT(this.state.textAddr);
+
+                // Stamp
+                const s = this.state.stamp;
+                if (s.img) {
+                    const sw = s.w * s.scale; const sh = s.h * s.scale;
+                    ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(s.x + 2, s.y + 2, sw, sh);
+                    ctx.drawImage(s.img, s.x, s.y, sw, sh);
+                }
+
+                // Postmark Templates
+                if (this.state.postmarkType !== 'none') {
+                    // Position over stamp or default
+                    const px = s.img ? s.x + (s.w * s.scale) / 2 : 1050;
+                    const py = s.img ? s.y + (s.h * s.scale) / 2 : 150;
+                    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }).toUpperCase();
+
+                    ctx.save(); ctx.translate(px, py); ctx.rotate(-0.2); ctx.globalAlpha = 0.85; ctx.fillStyle = "#cc0000"; ctx.strokeStyle = "#cc0000";
+
+                    if (this.state.postmarkType === 'ring') {
+                        ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 55, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 50, 0, Math.PI * 2); ctx.stroke();
+                        ctx.font = "bold 12px Courier New"; ctx.textAlign = "center";
+                        ctx.fillText("NORTH POLE POST", 0, -25); ctx.fillText(dateStr, 0, 5);
+                    } else if (this.state.postmarkType === 'wave') {
+                        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(-40, 0, 35, 0, Math.PI * 2); ctx.stroke();
+                        ctx.font = "10px Courier New"; ctx.textAlign = "center"; ctx.fillText(dateStr, -40, 4);
+                        ctx.beginPath();
+                        for (let i = 0; i < 3; i++) {
+                            let y = -10 + i * 10;
+                            ctx.moveTo(0, y); ctx.bezierCurveTo(20, y - 10, 40, y + 10, 80, y);
+                        }
+                        ctx.stroke();
+                    } else if (this.state.postmarkType === 'box') {
+                        ctx.lineWidth = 2; ctx.strokeRect(-50, -25, 100, 50);
+                        ctx.font = "bold 14px Courier New"; ctx.textAlign = "center";
+                        ctx.fillText("AIR MAIL", 0, -5); ctx.font = "10px Courier New"; ctx.fillText(dateStr, 0, 15);
+                    }
+                    ctx.restore();
+                }
+            }
+
+            renderBack() {
+                const ctx = this.ctxB; const w = 1200, h = 750;
+                ctx.clearRect(0, 0, w, h); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
+
+                // BG
+                if (this.state.bgImage) {
+                    const img = this.state.bgImage; const p = this.state.imgProps;
+                    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(p.scale, p.scale);
+                    ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore();
+                }
+
+                // Back Stamp Box
+                if (this.state.backStamp.show) {
+                    const s = this.state.backStamp;
+                    if (s.img) { ctx.drawImage(s.img, s.x, s.y, s.w, s.h); }
+                    else {
+                        ctx.strokeStyle = "#999"; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+                        ctx.strokeRect(s.x, s.y, s.w, s.h);
+                        ctx.fillStyle = "#999"; ctx.font = "12px sans-serif"; ctx.fillText("Stamp", s.x + 30, s.y + 60); ctx.setLineDash([]);
+                    }
+                }
+
+                // Illustrations
+                this.state.illustrations.forEach(ill => {
+                    ctx.save(); ctx.translate(ill.x, ill.y); ctx.scale(ill.scale, ill.scale);
+                    ctx.drawImage(ill.img, -ill.img.width / 2, -ill.img.height / 2); ctx.restore();
+                });
+
+                // Back Text
+                const tb = this.state.textBack;
+                ctx.font = `${tb.size}px "${tb.font}"`; ctx.fillStyle = tb.color;
+                ctx.textBaseline = "top"; ctx.textAlign = "center";
+                tb.val.split('\n').forEach((l, i) => ctx.fillText(l, tb.x, tb.y + i * tb.size * 1.2));
+            }
+        }
+
+        // --- SHARED SETUP ---
+        const CONFIG = { 
+            view: { x: 0, y: 0, scale: 1 }, 
+            isDay: true, 
+            style: { 
+                flowerType: 'daisy', // NEW
+                petalCountTarget: 8, 
+                petalColor: '#FFFFFF', 
+                centerColor: '#FFA500', 
+                stemColor: '#90EE90', 
+                bgColor: '#E0F8E0' 
+            } 
+        };
+        const PRESETS = {
+            DAY: { bgColor: '#E0F8E0', petalColor: '#FFFFFF', stemColor: '#90EE90', centerColor: '#FFA500' },
+            NIGHT: { bgColor: '#020205', petalColor: '#E0FFFF', stemColor: '#2E8B57', centerColor: '#FFA500' }
+        };
+
+        const STATE = {
+            scene: ['GARDEN'],
+            flowers: [],
+            grass: [], // Background grass blades
+            isDragging: false,
+            lastPos: {x:0, y:0},
+            time: 0,
+            isSnapshotting: false
+        };
+        // --- AUDIO ---
+        class SoundSynth {
+            constructor() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.master = this.ctx.createGain();
+                this.master.connect(this.ctx.destination);
+                this.master.gain.value = 0.2;
+            }
+            resume() { if(this.ctx.state === 'suspended') this.ctx.resume(); }
+            playTone(freq, type, dur, vol=1) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type; osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+                osc.connect(gain); gain.connect(this.master);
+                osc.start(); osc.stop(this.ctx.currentTime + dur);
+            }
+        }
+        const AudioSys = new SoundSynth();
+
+        // --- BACKGROUND GRASS SYSTEM ---
+        class GrassBlade {
+            constructor(w, h) {
+                this.x = Math.random() * w;
+                this.y = Math.random() * h; // Ground position
+                this.height = 15 + Math.random() * 20;
+                this.lean = (Math.random() - 0.5) * 10;
+                this.colorOffset = Math.random() * 20 - 10; // Variation
+            }
+            draw(ctx, windStrength) {
+                // Apply wind
+                const sway = windStrength * (this.height * 0.3) + this.lean;
+                
+                // Color variation
+                const baseColor = CONFIG.style.stemColor; // Use configured stem color as base
+                // Simple darkening for background grass to add depth
+                ctx.strokeStyle = this.adjustColor(baseColor, -30 + this.colorOffset);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.quadraticCurveTo(this.x + sway*0.5, this.y - this.height*0.5, this.x + sway, this.y - this.height);
+                ctx.stroke();
+            }
+            // Utility to darken/lighten hex color
+            adjustColor(color, amount) {
+                // Very simplified hex adjuster
+                let usePound = false;
+                if (color[0] == "#") { color = color.slice(1); usePound = true; }
+                let num = parseInt(color, 16);
+                let r = (num >> 16) + amount; if (r > 255) r = 255; else if (r < 0) r = 0;
+                let b = ((num >> 8) & 0x00FF) + amount; if (b > 255) b = 255; else if (b < 0) b = 0;
+                let g = (num & 0x0000FF) + amount; if (g > 255) g = 255; else if (g < 0) g = 0;
+                return (usePound?"#":"") + (g | (b << 8) | (r << 16)).toString(16);
+            }
+        }
+
+        // --- DAISY ---
+        class Daisy {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.age = 0;
+                this.state = 'seed';
+                this.witherTime = 0;
+                this.finalHeight = 40 + Math.random() * 60;
+                this.bend = (Math.random() - 0.5) * 20; // Intrinsic bend
+                const base = CONFIG.style.petalCountTarget;
+                this.petalCount = Math.max(5, base + Math.floor(Math.random()*3 - 1)); 
+                this.scale = this.calcDensity(x, y);
+                this.sounds = {sprout:false, bloom:false};
+            }
+
+            calcDensity(x, y) {
+                let neighbors = 0;
+                for(let f of STATE.flowers) {
+                    if(Math.hypot(f.x-x, f.y-y) < 40) neighbors++;
+                }
+                return Math.max(0.5, 1.2 - neighbors*0.1);
+            }
+
+            update(dt) {
+                if(this.state === 'withered') { 
+                    this.witherTime += dt; 
+                    return; 
+                }
+                this.age += dt;
+
+                if(this.age < 0.2) this.state = 'seed';
+                else if(this.age < 0.7) {
+                    this.state = 'growing';
+                    if(!this.sounds.sprout) { AudioSys.playTone(300+Math.random()*100, 'sine', 0.2, 0.5); this.sounds.sprout=true; }
+                } else if(this.age < 1.2) this.state = 'bud';
+                else {
+                    this.state = 'blooming';
+                    if(!this.sounds.bloom) { AudioSys.playTone(600+Math.random()*200, 'sine', 0.5, 0.8); this.sounds.bloom=true; }
+                }
+            }
+
+            draw(ctx, windStrength) {
+                if(this.witherTime > 2.0) return; // Fully disappeared
+                
+                const stemColor = this.state==='withered' ? '#8B4513' : CONFIG.style.stemColor;
+                const centerColor = CONFIG.style.centerColor;
+                const petalColor = CONFIG.style.petalColor;
+                const opacity = Math.max(0, 1 - (this.witherTime * 0.8)); // Fade out slower
+                
+                ctx.globalAlpha = opacity;
+
+                if(this.age < 0.2) {
+                    ctx.fillStyle = '#5C4033';
+                    const drop = (this.age/0.2)*10;
+                    ctx.beginPath(); ctx.arc(this.x, this.y-10+drop, 2, 0, Math.PI*2); ctx.fill();
+                    return;
+                }
+
+                // Growth & Physics
+                const progress = Math.min(1, (this.age-0.2)/0.5);
+                const h = this.finalHeight * progress;
+                
+                // --- WIND EFFECT ---
+                // Calculate sway based on height and noise
+                const sway = windStrength * (h * 0.4); 
+                
+                const endX = this.x + (this.bend * progress) + sway;
+                const endY = this.y - h;
+                const cpX = this.x + (this.bend * 0.2) + (sway * 0.5); // Control point moves less
+
+                ctx.save();
+                
+                // --- WITHER ANIMATION: FALL OVER ---
+                if(this.state==='withered') {
+                    ctx.translate(this.x, this.y); 
+                    // Rotate up to 90 degrees (PI/2) based on witherTime
+                    const fallAngle = Math.min(Math.PI/2, this.witherTime * 2); 
+                    ctx.rotate(fallAngle); 
+                    ctx.translate(-this.x, -this.y);
+                }
+
+                // Stem
+                ctx.strokeStyle = stemColor; ctx.lineWidth = 2 * this.scale;
+                ctx.beginPath(); ctx.moveTo(this.x, this.y); 
+                ctx.quadraticCurveTo(cpX, this.y-h/2, endX, endY); ctx.stroke();
+
+                // Leaves (Sway with stem)
+                if(progress > 0.3) {
+                    ctx.fillStyle = stemColor;
+                    const lSize = 10 * this.scale * progress;
+                    // Interpolate position on bezier for leaves? Simplified: just use linear lerp for position
+                    const midX = (this.x + endX) / 2;
+                    const midY = (this.y + endY) / 2;
+                    
+                    ctx.beginPath(); ctx.ellipse(midX-3*progress, midY+h*0.1, lSize, lSize/3, -0.5 + (sway*0.01), 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(midX+3*progress, midY-h*0.1, lSize, lSize/3, 0.5 + (sway*0.01), 0, Math.PI*2); ctx.fill();
+                }
+
+                // Flower Head
+                if(this.age > 0.7) {
+                    ctx.translate(endX, endY);
+                    // Flower head rotates slightly with wind too
+                    ctx.rotate(sway * 0.02);
+
+                    if(this.state === 'blooming') {
+                        const bloomT = Math.min(1, (this.age-1.2)/0.3);
+                        const s = (1 + Math.sin(bloomT*Math.PI*1.5)*0.2) * this.scale;
+                        ctx.scale(s, s);
+
+                        if(!CONFIG.isDay) { ctx.shadowBlur=10; ctx.shadowColor=petalColor; }
+                        
+                        ctx.fillStyle = petalColor;
+                        // --- NEW SHAPE SWITCHER ---
+                        const type = CONFIG.style.flowerType;
+
+                        if (type === 'tulip') {
+                            // Tulip Shape (Cup)
+                            ctx.beginPath();
+                            ctx.moveTo(-8, 0);
+                            ctx.bezierCurveTo(-10, -15, -5, -25, 0, -20); // Left petal
+                            ctx.bezierCurveTo(5, -25, 10, -15, 8, 0);     // Right petal
+                            ctx.bezierCurveTo(5, 5, -5, 5, -8, 0);        // Base
+                            ctx.fill();
+                        } 
+                        else if (type === 'star') {
+                            // Star Shape (Pointy petals)
+                            const step = (Math.PI*2)/this.petalCount;
+                            for(let i=0; i<this.petalCount; i++) {
+                                ctx.save(); ctx.rotate(i*step);
+                                ctx.beginPath(); 
+                                // Pointier ellipse
+                                ctx.moveTo(0,0);
+                                ctx.quadraticCurveTo(3, -5, 0, -12);
+                                ctx.quadraticCurveTo(-3, -5, 0, 0);
+                                ctx.fill();
+                                ctx.restore();
+                            }
+                        } 
+                        else {
+                            // Default Daisy (Existing Logic)
+                            const step = (Math.PI*2)/this.petalCount;
+                            for(let i=0; i<this.petalCount; i++) {
+                                ctx.save(); ctx.rotate(i*step);
+                                ctx.beginPath(); ctx.ellipse(0, -8, 3, 8, 0, 0, Math.PI*2); ctx.fill();
+                                ctx.restore();
+                            }
+                        }
+
+                        // Draw Center (Only for Daisy/Star, Tulips usually hide it)
+                        if (type !== 'tulip') {
+                            ctx.shadowBlur=0;
+                            ctx.fillStyle = centerColor; ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
+                        }
+                    } else {
+                        const bs = 3 * ((this.age-0.7)/0.5) * this.scale;
+                        ctx.fillStyle = stemColor; ctx.beginPath(); ctx.arc(0,0,bs,0,Math.PI*2); ctx.fill();
+                        ctx.fillStyle = 'yellow'; ctx.beginPath(); ctx.arc(0,-1,bs*0.5,0,Math.PI*2); ctx.fill();
+                    }
+                    ctx.translate(-endX, -endY);
+                }
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        class GardenApp {
+            constructor() {
+                this.gardenCanvas = document.getElementById('garden-canvas'); 
+                this.ctx = this.gardenCanvas.getContext('2d');
+                this.resize(); 
+                window.addEventListener('resize', () => this.resize());
+                this.initInteraction(); 
+                this.initUI(); 
+                this.initGrass();
+                this.pc = new PostcardEngine(this.gardenCanvas, this);
+                
+                this.lastTime = performance.now();
+                this.loop();
+            }
+
+            resize() {
+                this.gardenCanvas.width = window.innerWidth;
+                this.gardenCanvas.height = window.innerHeight;
+                this.initGrass(); // Re-generate grass on resize
+            }
+
+            initGrass() {
+                STATE.grass = [];
+                // Generate simple background grass blades
+                // Density proportional to screen width
+                const count = Math.floor(window.innerWidth / 3); 
+                for(let i=0; i<count; i++) {
+                    STATE.grass.push(new GrassBlade(window.innerWidth, window.innerHeight));
+                }
+            }
+            
+            initUI() {
+                // Button Listeners
+                document.getElementById('btn-switch').onclick = () => this.toggleScene();
+                document.getElementById('btn-daynight').onclick = () => this.toggleDayNight();
+                document.getElementById('btn-save').onclick = () => this.saveCanvas();
+                document.getElementById('btn-clear').onclick = () => STATE.flowers = [];
+
+                // 1. Bind the new Shape Selector
+                document.getElementById('sel-flower-shape').addEventListener('change', (e) => {
+                    CONFIG.style.flowerType = e.target.value;
+                });
+
+                // Panel Logic
+                const panel = document.getElementById('custom-panel');
+                const header = document.getElementById('panel-header');
+                document.getElementById('btn-style').addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    panel.classList.toggle('visible');
+                });
+                document.getElementById('btn-close-panel').addEventListener('click', () => panel.classList.remove('visible'));
+
+                // Reactive Inputs
+                const pVal = document.getElementById('petal-val');
+                document.getElementById('inp-petals').addEventListener('input', (e) => {
+                    CONFIG.style.petalCountTarget = parseInt(e.target.value);
+                    pVal.innerText = e.target.value;
+                });
+
+                header.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    let shiftX = e.clientX - panel.getBoundingClientRect().left;
+                    let shiftY = e.clientY - panel.getBoundingClientRect().top;
+
+                    const onMove = (moveEvent) => {
+                        panel.style.left = moveEvent.clientX - shiftX + 'px';
+                        panel.style.top = moveEvent.clientY - shiftY + 'px';
+                        // Remove 'right' to prevent CSS conflict
+                        panel.style.right = 'auto'; 
+                    };
+
+                    const onUp = () => {
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                    };
+
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+
+
+                const bindColor = (id, prop, wrapId) => {
+                    const el = document.getElementById(id);
+                    const wrap = document.getElementById(wrapId);
+                    el.addEventListener('input', (e) => {
+                        CONFIG.style[prop] = e.target.value;
+                        wrap.style.background = e.target.value;
+                    });
+                };
+
+                bindColor('inp-petal-color', 'petalColor', 'wrap-petal');
+                bindColor('inp-center-color', 'centerColor', 'wrap-center');
+                bindColor('inp-stem-color', 'stemColor', 'wrap-stem');
+                bindColor('inp-bg-color', 'bgColor', 'wrap-bg');
+            }
+
+            toggleDayNight() {
+                CONFIG.isDay = !CONFIG.isDay;
+                const preset = CONFIG.isDay ? PRESETS.DAY : PRESETS.NIGHT;
+                CONFIG.style.bgColor = preset.bgColor;
+                CONFIG.style.petalColor = preset.petalColor;
+                CONFIG.style.stemColor = preset.stemColor;
+                CONFIG.style.centerColor = preset.centerColor;
+                
+                // Update color inputs to match new preset
+                document.getElementById('inp-petal-color').value = preset.petalColor;
+                document.getElementById('wrap-petal').style.background = preset.petalColor;
+                
+                document.getElementById('inp-stem-color').value = preset.stemColor;
+                document.getElementById('wrap-stem').style.background = preset.stemColor;
+                
+                document.getElementById('inp-center-color').value = preset.centerColor;
+                document.getElementById('wrap-center').style.background = preset.centerColor;
+
+                document.getElementById('inp-bg-color').value = preset.bgColor;
+                document.getElementById('wrap-bg').style.background = preset.bgColor;
+            }
+
+            toggleScene() {
+                // 点击按钮跳转到 MoodBar.html（可根据实际路径调整）
+                window.location.href = 'index.html';
+            }
+
+            initInteraction() {
+                const c = this.gardenCanvas;
+                const start = (x, y) => {
+                    STATE.isDragging = true; STATE.lastPos = { x, y };
+                    AudioSys.resume();
+
+                    const w = this.toWorld(x, y);
+                    let pruned = false;
+                    for (let f of STATE.flowers) {
+                        // Check prune area (blooming flower head)
+                        if (f.state === 'blooming' && Math.abs(f.x - w.x) < 25 && Math.abs((f.y - f.finalHeight) - w.y) < 35) {
+                            // Start Wither: Set start time, change state
+                            if (f.witherTime === 0) {
+                                f.witherTime = 0.01;
+                                f.state = 'withered';
+                                AudioSys.playTone(100, 'triangle', 0.8, 0.4); // Deeper, slower sound
+                            }
+                            pruned = true; break;
+                        }
+                    }
+                    if (!pruned) STATE.flowers.push(new Daisy(w.x, w.y));
+                };
+
+                const move = (x, y) => {
+                    if (STATE.isDragging) {
+                        const dx = x - STATE.lastPos.x;
+                        const dy = y - STATE.lastPos.y;
+                        CONFIG.view.x += dx; CONFIG.view.y += dy;
+                        STATE.lastPos = { x, y };
+                    }
+                };
+
+                c.addEventListener('mousedown', e => start(e.clientX, e.clientY));
+                c.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+                window.addEventListener('mouseup', () => STATE.isDragging = false);
+                c.addEventListener('touchstart', e => { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+                c.addEventListener('touchmove', e => { e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+            }
+
+            saveCanvas() {
+                const a = document.createElement('a');
+                a.download = `Garden_${new Date().toISOString().slice(0, 10)}.png`;
+                a.href = this.gardenCanvas.toDataURL();
+                a.click();
+            }
+
+            toWorld(sx, sy) {
+                return { x: (sx - CONFIG.view.x) / CONFIG.view.scale, y: (sy - CONFIG.view.y) / CONFIG.view.scale };
+            }
+
+            render(dt) {
+                // Update Global Wind
+                STATE.time += dt;
+                // Complex wind: Main sine wave + faster noise
+                const wind = Math.sin(STATE.time * 1.5) + Math.sin(STATE.time * 3.2) * 0.5;
+
+                // Draw Background (Ground)
+                this.ctx.fillStyle = CONFIG.style.bgColor;
+                this.ctx.fillRect(0, 0, this.gardenCanvas.width, this.gardenCanvas.height);
+
+                // Draw Stars if Night
+                if (!CONFIG.isDay) {
+                    this.ctx.fillStyle = '#FFF';
+                    for (let i = 0; i < 40; i++) {
+                        if (Math.random() > 0.95) this.ctx.fillRect(Math.random() * this.gardenCanvas.width, Math.random() * this.gardenCanvas.height, 2, 2);
+                    }
+                }
+
+                // Draw Background Grass
+                if (CONFIG.isDay) {
+                    this.ctx.save();
+                    this.ctx.translate(CONFIG.view.x, CONFIG.view.y);
+                    this.ctx.scale(CONFIG.view.scale, CONFIG.view.scale);
+
+                    for (let blade of STATE.grass) {
+                        // Culling: check bounds
+                        if (blade.x > -100 && blade.x < this.gardenCanvas.width + 100) {
+                            blade.draw(this.ctx, wind);
+                        }
+                    }
+                    this.ctx.restore();
+                }
+
+                this.ctx.save();
+                this.ctx.translate(CONFIG.view.x, CONFIG.view.y);
+                this.ctx.scale(CONFIG.view.scale, CONFIG.view.scale);
+
+                // Sort & Draw Flowers
+                STATE.flowers.sort((a, b) => a.y - b.y);
+                // Remove fully withered
+                STATE.flowers = STATE.flowers.filter(f => f.witherTime < 2);
+
+                STATE.flowers.forEach(f => {
+                    f.update(dt);
+                    // Pass wind (offset by X to create wave effect across field)
+                    const localWind = wind * 0.5 + Math.sin(f.x * 0.01 + STATE.time) * 0.3;
+                    f.draw(this.ctx, localWind);
+                });
+
+                this.ctx.restore();
+
+                // --- 新增代码开始：绘制截图区域虚线框 ---
+                // 只有当不是正在截图时，才绘制辅助线
+                if (!STATE.isSnapshotting) {
+                    // 1. 计算与 captureSnapshot 相同的 8:5 比例区域
+                    const sw = this.gardenCanvas.width;
+                    const sh = this.gardenCanvas.height;
+                    let boxW = sw * 0.8;
+                    let boxH = boxW / 1.6; // 1200 / 750 = 1.6
+                    
+                    // 如果高度溢出，则基于高度反算宽度
+                    if (boxH > sh * 0.8) {
+                        boxH = sh * 0.8;
+                        boxW = boxH * 1.6;
+                    }
+                    
+                    // 居中计算
+                    const sx = (sw - boxW) / 2;
+                    const sy = (sh - boxH) / 2;
+
+                    // 2. 绘制白色圆角虚线框
+                    this.ctx.save();
+                    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; // 半透明白色
+                    this.ctx.lineWidth = 2;
+                    this.ctx.setLineDash([10, 10]); // 虚线样式
+                    this.ctx.beginPath();
+                    // 绘制圆角矩形 (x, y, w, h, radius)
+                    if (this.ctx.roundRect) {
+                        this.ctx.roundRect(sx, sy, boxW, boxH, 20); 
+                    } else {
+                        this.ctx.rect(sx, sy, boxW, boxH); // 兼容旧浏览器
+                    }
+                    this.ctx.stroke();
+                    
+                    // 可选：添加文字提示
+                    this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                    this.ctx.font = "10px Cinzel";
+                    this.ctx.fillText("POSTCARD AREA", sx, sy - 10);
+                    this.ctx.restore();
+                }
+            
+                // --- 新增代码结束 ---
+
+                const bloom = STATE.flowers.filter(f => f.state === 'blooming').length;
+                document.getElementById('daisy-stats').innerText = `Daisies: ${STATE.flowers.length} | Blooming: ${bloom}`;
+            }
+
+            loop() {
+                const now = performance.now();
+                const dt = (now - this.lastTime) / 1000;
+                this.lastTime = now;
+                this.render(dt);
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+        
+        const app = new GardenApp(); 
+        
+        // Remove loader
+        setTimeout(() => { 
+            document.getElementById('loader').style.opacity = 0; 
+            setTimeout(() => document.getElementById('loader').remove(), 800); 
+        }, 800);
+    </script>
+</body>
+
+</html>
