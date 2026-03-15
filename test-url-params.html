@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试读取URL参数（num乱码映射）</title>
+    <style>
+        body {
+            font-family: Poppins, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .param-display {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid #2c7a7b;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .test-tips {
+            color: #666;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-left: 4px solid #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <h1>URL参数（乱码→数字）映射测试</h1>
+    
+    <div class="test-tips">
+        <strong>测试方法：</strong><br>
+        1. 在地址栏添加num参数（填入示例乱码），比如：<br>
+        <code>test-url-params.html?product=Ergonomic+Chair&color=black&num=a1b2c3</code><br>
+        2. 示例乱码映射：<br>
+        a1b2c3 → 1 | d4e5f6 → 2 | g7h8i9 → 3 | j0k1l2 → 4 | m3n4o5 → 5
+    </div>
+
+    <!-- 参数显示区域：price改为num，显示映射后的数字 -->
+    <div class="param-display">
+        <p><strong>产品名称：</strong><span id="product"></span></p>
+        <p><strong>产品颜色：</strong><span id="color"></span></p>
+        <p><strong>映射后的数字：</strong><span id="num"></span> / 919 </p>
+        <!-- <p><strong>原始乱码值：</strong><span id="num-raw"></span></p>  -->
+        <p><strong>未定义的参数（默认空）：</strong><span id="empty-param"></span></p>
+    </div>
+
+    <script>
+        // 核心函数：读取URL中指定名称的参数值
+        function getUrlParam(paramName) {
+            const search = window.location.search.substring(1);
+            const params = search.split('&');
+            for (let i = 0; i < params.length; i++) {
+                const pair = params[i].split('=');
+                if (pair[0] === paramName) {
+                    return decodeURIComponent(pair[1] || '');
+                }
+            }
+            return '';
+        }
+
+        // 核心映射：6位乱码 → 数字1-5（你可替换成自己的乱码）
+        const numCodeMap = {
+            'a1b2c3': '1', // 示例乱码1 → 数字1
+            'd4e5f6': '2', // 示例乱码2 → 数字2
+            'g7h8i9': '3', // 示例乱码3 → 数字3
+            'j0k1l2': '4', // 示例乱码4 → 数字4
+            'm3n4o5': '5'  // 示例乱码5 → 数字5
+            // 可继续添加更多乱码映射，比如 'x9y8z7': '5'
+        };
+
+        // 页面加载后解析参数并映射显示
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 提取参数（price改为num）
+            const product = getUrlParam('product');
+            const color = getUrlParam('color');
+            const numRaw = getUrlParam('num'); // 原始乱码值
+            const emptyParam = getUrlParam('abc123');
+
+            // 2. 乱码映射为数字：匹配到显示对应数字，否则显示「无」
+            const numMapped = numCodeMap[numRaw] || '无';
+
+            // 3. 插入到页面
+            document.getElementById('product').textContent = product || '无';
+            document.getElementById('color').textContent = color || '无';
+            document.getElementById('num').textContent = numMapped; // 显示映射后的数字
+            document.getElementById('num-raw').textContent = numRaw || '无'; // 显示原始乱码
+            document.getElementById('empty-param').textContent = emptyParam || '无';
+        });
+    </script>
+</body>
+</html>
